@@ -1,26 +1,30 @@
 const express = require('express');
 const path = require('path');
 const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose')
+require('dotenv').config();
 
-const {connectToMongoDB } = require('./connect');
 const {restrictToLoggedInUserOnly} = require('./middleware/auth');
 const URL = require('./models/url');
 const urlRoute = require('./routes/url');
-const staticRoute = require('./routes/staticRouter');
 const userRoute = require('./routes/user');
 
 const app = express();
 const PORT = 8001;
 
-connectToMongoDB('mongodb://localhost:27017/short-url')
-    .then(() => console.log('MongoDB connected'))
-    .catch((err) => console.error('MongoDB connection error:', err));
+
+mongoose.connect(process.env.MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log('MongoDB connected'))
+  .catch((err) => console.error('MongoDB connection error:', err));
 
 app.set("view engine", "ejs");
 app.set('views', path.resolve('./views'));
 
 app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.get('/', restrictToLoggedInUserOnly, async (req, res) => {
@@ -41,8 +45,15 @@ app.get('/url/:shortId', async (req, res) => {
     res.redirect(entry.redirectURL);
 });
 
+app.get('/signup', (req, res) => {
+    return res.render('signup');
+});
+
+app.get('/login', (req, res) => {
+    return res.render('login');
+});
+
 app.use('/url', restrictToLoggedInUserOnly, urlRoute);
 app.use('/user', userRoute);
-app.use('/', staticRoute);
 
 app.listen(PORT, () => console.log(`Server started on PORT: ${PORT}`));
