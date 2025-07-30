@@ -78,7 +78,8 @@
             box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
         }
 
-        th, td {
+        th,
+        td {
             padding: 12px;
             border-bottom: 1px solid #ddd;
             text-align: center;
@@ -91,6 +92,30 @@
 
         tr:hover {
             background-color: #f1f1f1;
+        }
+
+        .pagination {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .pagination a {
+            padding: 8px 16px;
+            text-decoration: none;
+            border: 1px solid #ddd;
+            color: #333;
+            margin: 0 4px;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+
+        .pagination a:hover {
+            background-color: #f4f4f4;
+        }
+
+        .pagination span {
+            padding: 8px 16px;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -126,6 +151,7 @@
                     <th>Short URL</th>
                     <th>Original URL</th>
                     <th>Clicks</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -134,10 +160,27 @@
                         <td><a href="/url/<%= url.shortId %>">/url/<%= url.shortId %></a></td>
                         <td><%= url.redirectURL %></td>
                         <td><%= url.visitHistory.length %></td>
+                        <td>
+                            <a href="/url/delete/<%= url.shortId %>" style="color: red;">Delete</a>
+                        </td>
                     </tr>
                 <% }) %>
             </tbody>
         </table>
+    <% } %>
+
+    <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+        <div class="pagination">
+            <% if (currentPage > 1) { %>
+                <a href="/?page=<%= currentPage - 1 %>">Previous</a>
+            <% } %>
+
+            <span>Page <%= currentPage %> of <%= totalPages %></span>
+
+            <% if (currentPage < totalPages) { %>
+                <a href="/?page=<%= currentPage + 1 %>">Next</a>
+            <% } %>
+        </div>
     <% } %>
 
     <script>
