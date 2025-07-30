@@ -25,7 +25,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 app.get('/', restrictToLoggedInUserOnly, async (req, res) => {
-    return res.render('home'); 
+    const allUrls = await URL.find({createdBy: req.user._id});
+    return res.render('home', {
+        urls: allUrls,
+    }); 
 });
 
 app.get('/url/:shortId', async (req, res) => {
