@@ -6,6 +6,7 @@ require('dotenv').config();
 
 const {restrictToLoggedInUserOnly} = require('./middleware/auth');
 const URL = require('./models/url');
+const UserURL = require("./models/userUrl")
 const urlRoute = require('./routes/url');
 const userRoute = require('./routes/user');
 
@@ -24,22 +25,51 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+
 app.get('/', restrictToLoggedInUserOnly, async (req, res) => {
-    const page = parseInt(req.query.page) || 1; 
+    const page = parseInt(req.query.page) || 1;
     const limit = 10;
     const skip = (page - 1) * limit;
-    const urls = await URL.find({ createdBy: req.user._id })
-        .sort({ createdAt: -1 }) 
-        .skip(skip)              
-        .limit(limit);     
-    const totalUrls = await URL.countDocuments({ createdBy: req.user._id });
-    const totalPages = Math.ceil(totalUrls / limit);     
+
+    
+    const urlsWithPagination = await UserURL.aggregate([
+        {
+            $match: {
+                userId: new mongoose.Types.ObjectId(req.user._id)
+            }
+        },
+        {
+            $lookup: {
+                from: 'urls',               
+                localField: 'urlId',
+                foreignField: '_id',
+                as: 'urlData'
+            }
+        },
+        {
+            $unwind: '$urlData'           
+        },
+        {
+            $skip: skip
+        },
+        {
+            $limit: limit
+        },
+        {
+            $replaceRoot: { newRoot: '$urlData' } 
+        }
+    ]);
+
+    const totalLinks = await UserURL.countDocuments({ userId: req.user._id });
+    const totalPages = Math.ceil(totalLinks / limit);
+
     return res.render('home', {
-        urls: urls,
+        urls: urlsWithPagination,
         currentPage: page,
         totalPages: totalPages,
-    });  
+    });
 });
+
 
 app.get('/url/:shortId', async (req, res) => {
     const shortId = req.params.shortId;

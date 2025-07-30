@@ -1,19 +1,36 @@
 const shortid = require('shortid');
 const URL = require("../models/url");
+const UserURL = require("../models/userUrl");
 
 async function handlegenerateNewShortURL(req, res) {
     const body = req.body;
     if (!body.url) return res.status(400).json({ error: 'URL is required' });
 
-    const shortID = shortid();
-    await URL.create({
-        shortId: shortID,
-        redirectURL: body.url,
-        visitHistory: [],
-        createdBy: req.user._id,
+    let urlEntry = await URL.findOne({ redirectURL: body.url });
+
+    if(!urlEntry){
+        const shortID = shortid();
+        urlEntry = await URL.create({
+            shortId: shortID,
+            redirectURL: body.url,
+            visitHistory: [],
+        });
+    }
+
+    const userLinkExists = await UserURL.findOne({
+        userId: req.user._id,
+        urlId: urlEntry._id,
     });
-    
-    return res.json({ id: shortID });
+
+    if (!userLinkExists) {
+        await UserURL.create({
+            userId: req.user._id,
+            urlId: urlEntry._id,
+        });
+    }
+
+
+    return res.json({ id: urlEntry.shortId });
 }
 
 async function handleGetAnalytics(req, res) {
@@ -28,14 +45,21 @@ async function handleGetAnalytics(req, res) {
 
 async function handleDeleteUrl(req, res) {
     const shortId = req.params.shortId;
-    
-    const result = await URL.findOneAndDelete({ 
-        shortId,
-        createdBy: req.user._id 
+
+    const urlEntry = await URL.findOne({ shortId });
+    if (!urlEntry) {
+        return res.status(404).send("URL not found.");
+    }
+
+    await UserURL.findOneAndDelete({
+        urlId: urlEntry._id,
+        userId: req.user._id,
     });
 
-    if (!result) {
-        return res.status(404).send("URL not found or you don't have permission to delete it.");
+    const remainingLinks = await UserURL.countDocuments({ urlId: urlEntry._id });
+    
+    if (remainingLinks === 0) {
+        await URL.findByIdAndDelete(urlEntry._id);
     }
 
     return res.redirect('/'); 
